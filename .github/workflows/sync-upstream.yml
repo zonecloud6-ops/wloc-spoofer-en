@@ -32,8 +32,7 @@ jobs:
           for branch in "${upstream_branches[@]}"; do git push origin --force "refs/remotes/upstream/$branch:refs/heads/$branch"; done
           mapfile -t target_branches < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}')
           for branch in "${target_branches[@]}"; do
-          if [[ "$branch" != 'custom' ]] && ! printf '%s
-' "${upstream_branches[@]}" | grep -Fxq "$branch"; then git push origin --delete "$branch"; fi
+          if [[ "$branch" != 'custom' ]] && ! printf '%s\n' "${upstream_branches[@]}" | grep -Fxq "$branch"; then git push origin --delete "$branch"; fi
           done
           git push origin --force --tags
           target_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
