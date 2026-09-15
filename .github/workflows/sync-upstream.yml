@@ -1,1 +1,42 @@
-name: Sync upstream mirror\n\non:\n  schedule:\n    - cron: '17 2 * * *'\n  workflow_dispatch:\n\npermissions:\n  contents: write\n\njobs:\n  sync:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout maintenance branch\n        uses: actions/checkout@v4\n        with:\n          ref: custom\n          fetch-depth: 0\n\n      - name: Sync branches and tags from upstream\n        shell: bash\n        run: |\n          set -euo pipefail\n          upstream_url='https://github.com/cyberhandyman/wloc-spoofer-en.git'\n          git remote add upstream "$upstream_url"\n          git fetch upstream --prune --tags\n          upstream_sha=$(git rev-parse refs/remotes/upstream/main)\n          echo "Upstream main: $upstream_sha"\n          git push origin --force refs/remotes/upstream/main:refs/heads/main\n          mapfile -t upstream_branches < <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/upstream/ | grep -v '^HEAD$')\n          for branch in "${upstream_branches[@]}"; do git push origin --force "refs/remotes/upstream/$branch:refs/heads/$branch"; done\n          mapfile -t target_branches < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}')\n          for branch in "${target_branches[@]}"; do\n          if [[ "$branch" != 'custom' ]] && ! printf '%s\n' "${upstream_branches[@]}" | grep -Fxq "$branch"; then git push origin --delete "$branch"; fi\n          done\n          git push origin --force --tags\n          target_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')\n          source_sha=$(git ls-remote upstream refs/heads/main | awk '{print $1}')\n          test "$target_sha" = "$source_sha"\n          echo "Verified main SHA: $target_sha"
+name: Sync upstream mirror
+
+"on":
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout maintenance branch
+        uses: actions/checkout@v4
+        with:
+          ref: custom
+          fetch-depth: 0
+
+      - name: Sync branches and tags from upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream_url='https://github.com/cyberhandyman/wloc-spoofer-en.git'
+          git remote add upstream "$upstream_url"
+          git fetch upstream --prune --tags
+          upstream_sha=$(git rev-parse refs/remotes/upstream/main)
+          echo "Upstream main: $upstream_sha"
+          git push origin --force refs/remotes/upstream/main:refs/heads/main
+          mapfile -t upstream_branches < <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/upstream/ | grep -v '^HEAD$')
+          for branch in "${upstream_branches[@]}"; do git push origin --force "refs/remotes/upstream/$branch:refs/heads/$branch"; done
+          mapfile -t target_branches < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}')
+          for branch in "${target_branches[@]}"; do
+          if [[ "$branch" != 'custom' ]] && ! printf '%s
+' "${upstream_branches[@]}" | grep -Fxq "$branch"; then git push origin --delete "$branch"; fi
+          done
+          git push origin --force --tags
+          target_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+          source_sha=$(git ls-remote upstream refs/heads/main | awk '{print $1}')
+          test "$target_sha" = "$source_sha"
+          echo "Verified main SHA: $target_sha"
